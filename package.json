@@ -1,0 +1,67 @@
+{
+  "name": "docguard",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DocGuard Nigeria - Automated Loan Compliance Fortress",
+  "author": "LMA Edge Team",
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:electron": "esbuild ./electron/main.ts --bundle --platform=node --outfile=dist-electron/main.cjs --external:electron --external:electron-squirrel-startup --format=cjs && esbuild ./electron/preload.ts --bundle --platform=node --outfile=dist-electron/preload.cjs --external:electron --format=cjs",
+    "electron:dev": "concurrently -k \"bun run dev\" \"wait-on tcp:5173 && bun run build:electron && electron .\"",
+    "electron:build": "bun run build && bun run build:electron && electron-builder"
+  },
+  "dependencies": {
+    "@google/genai": "^1.34.0",
+    "@supabase/supabase-js": "^2.48.1",
+    "electron-squirrel-startup": "^1.0.1",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-router-dom": "^7.11.0",
+    "recharts": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.23",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.27.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "com.docguard.nigeria",
+    "productName": "DocGuard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "snap"
+      ],
+      "category": "Office",
+      "icon": "build/icon.png"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    }
+  }
+}
