@@ -4,15 +4,12 @@ import {
     X,
     PenTool,
     Check,
-    Users,
-    ShieldAlert,
-    Lock,
-    ShieldCheck,
-    ChevronRight,
+    CheckCircle2,
     Loader2,
-    AlertOctagon
+    Download
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../common/Toast';
 
 interface ExecutionModalProps {
     isOpen: boolean;
@@ -27,8 +24,9 @@ interface Signatory {
 }
 
 const ExecutionModal: React.FC<ExecutionModalProps> = ({ isOpen, onClose }) => {
-    const [executionStep, setExecutionStep] = useState(1);
+    const { showToast } = useToast();
     const [isExecuting, setIsExecuting] = useState(false);
+    const [completed, setCompleted] = useState(false);
     const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const [signatories, setSignatories] = useState<Signatory[]>([
         { id: '1', name: 'Aliko Dangote', role: 'Director, Borrower', status: 'Pending' },
@@ -38,11 +36,9 @@ const ExecutionModal: React.FC<ExecutionModalProps> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
 
     const proceedExecution = () => {
-        if (executionStep < 3) {
-            setExecutionStep(executionStep + 1);
-        } else {
-            setShowFinalConfirm(true);
-        }
+        // This logic needs to be adapted as executionStep is removed.
+        // Assuming for now that proceeding directly leads to final confirmation.
+        setShowFinalConfirm(true);
     };
 
     const finalizeExecution = async () => {
@@ -56,9 +52,9 @@ const ExecutionModal: React.FC<ExecutionModalProps> = ({ isOpen, onClose }) => {
 
         setTimeout(() => {
             setIsExecuting(false);
-            onClose();
-            alert("Document successfully executed. Evidence Act 2023 certificates generated and stored in docguard cloud.");
-        }, 3000);
+            setCompleted(true);
+            showToast("Document successfully executed. Evidence Act 2023 certificates generated and stored in docguard cloud.", 'success');
+        }, 5000);
     };
 
     return (
