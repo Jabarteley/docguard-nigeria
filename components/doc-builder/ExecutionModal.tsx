@@ -1,15 +1,19 @@
 
 import React, { useState } from 'react';
+import { useToast } from '../common/Toast';
 import {
     X,
     PenTool,
     Check,
-    CheckCircle2,
+    Users,
+    ShieldAlert,
+    Lock,
+    ShieldCheck,
+    ChevronRight,
     Loader2,
-    Download
+    AlertOctagon
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useToast } from '../common/Toast';
 
 interface ExecutionModalProps {
     isOpen: boolean;
@@ -25,6 +29,7 @@ interface Signatory {
 
 const ExecutionModal: React.FC<ExecutionModalProps> = ({ isOpen, onClose }) => {
     const { showToast } = useToast();
+    const [executionStep, setExecutionStep] = useState(1);
     const [isExecuting, setIsExecuting] = useState(false);
     const [completed, setCompleted] = useState(false);
     const [showFinalConfirm, setShowFinalConfirm] = useState(false);
@@ -52,9 +57,9 @@ const ExecutionModal: React.FC<ExecutionModalProps> = ({ isOpen, onClose }) => {
 
         setTimeout(() => {
             setIsExecuting(false);
-            setCompleted(true);
+            onClose();
             showToast("Document successfully executed. Evidence Act 2023 certificates generated and stored in docguard cloud.", 'success');
-        }, 5000);
+        }, 3000);
     };
 
     return (
