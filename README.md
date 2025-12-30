@@ -29,11 +29,6 @@ In Nigeria's ₦15 trillion corporate lending market, **time kills deals**. A si
 *   **Liveness Detection**: Integrated camera interface.
 
 ### 4. Loan Origination Pipeline
-*   **Centralized Facility Management**: Structure loans with specific types, durations, and currencies.
-*   **Deep Context Linking**: Link documents, regulatory filings, and KYC checks directly to active facilities.
-*   **Unified Dashboard**: Monitor the entire lifecycle of a loan from origination to perfection.
-
-### 4. Loan Origination Pipeline
 *   **Centralized Facility Management**: Create and track loans with specific types, durations, and currencies.
 *   **Deep Context Linking**: Link documents, regulatory filings, and KYC checks directly to active facilities.
 *   **Unified Dashboard**: Monitor the entire lifecycle of a loan from origination to perfection.
