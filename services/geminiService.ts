@@ -68,7 +68,7 @@ export const analyzeClause = async (clauseText: string, context: string): Promis
   try {
     const ai = await getAIInstance();
     const response = await generateWithRetry(ai.models, {
-      model: "gemini-2.0-flash-exp", // Updated to latest stable experimental
+      model: "gemini-3-flash-preview", // Updated to latest stable preview
       contents: `Analyze the following Nigerian loan documentation clause for compliance with:
         1. LMA Nigeria Templates
         2. CAMA 2020 (Corporate and Allied Matters Act)
@@ -156,7 +156,7 @@ export const analyzePortfolioRisks = async (risks: { entity: string, task: strin
 export const rewriteClause = async (clauseText: string, instruction: string): Promise<string> => {
   const ai = await getAIInstance();
   const response = await generateWithRetry(ai.models, {
-    model: "gemini-2.0-flash-exp",
+    model: "gemini-3-flash-preview",
     contents: `Rewrite the following legal clause based on this instruction: "${instruction}".
     
     Original Clause: "${clauseText}"

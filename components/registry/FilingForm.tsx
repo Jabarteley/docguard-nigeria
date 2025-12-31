@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, FileText, DollarSign, Building2, Package } from 'lucide-react';
 import { useToast } from '../common/Toast';
 
@@ -41,6 +41,22 @@ const FilingForm: React.FC<FilingFormProps> = ({
         loanId: linkedLoanId,
         documentId: linkedDocumentId
     });
+
+    useEffect(() => {
+        if (isOpen && prefillData) {
+            setFormData(prev => ({
+                ...prev,
+                entityName: prefillData.entityName || prev.entityName,
+                rcNumber: prefillData.rcNumber || prev.rcNumber,
+                filingType: prefillData.filingType || prev.filingType,
+                chargeAmount: prefillData.chargeAmount || prev.chargeAmount,
+                chargeCurrency: prefillData.chargeCurrency || prev.chargeCurrency,
+                assetDescription: prefillData.assetDescription || prev.assetDescription,
+                loanId: linkedLoanId || prev.loanId,
+                documentId: linkedDocumentId || prev.documentId
+            }));
+        }
+    }, [isOpen, prefillData, linkedLoanId, linkedDocumentId]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

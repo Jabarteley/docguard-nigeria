@@ -11,7 +11,7 @@ const IdentityVerification: React.FC<IdentityVerificationProps> = ({ onComplete 
     const [isVerifying, setIsVerifying] = useState(false);
     const [error, setError] = useState('');
 
-    const handleVerify = () => {
+    const handleVerify = async () => {
         if (bvn.length !== 11) {
             setError('BVN must be 11 digits');
             return;
@@ -19,18 +19,22 @@ const IdentityVerification: React.FC<IdentityVerificationProps> = ({ onComplete 
         setIsVerifying(true);
         setError('');
 
-        // Simulate API call
-        setTimeout(() => {
+
+        // Call NIBSS Service
+        try {
+            const result = await import('../../services/nibssService').then(m => m.nibssService.validateBVN(bvn));
             setIsVerifying(false);
-            // Mock success
             onComplete({
-                bvn,
-                firstName: 'Aliko',
-                lastName: 'Dangote',
-                dob: '1957-04-10',
+                bvn: result.bvn,
+                firstName: result.firstName,
+                lastName: result.lastName,
+                dob: result.dob,
                 photoResult: 'MATCH'
             });
-        }, 2000);
+        } catch (err: any) {
+            setIsVerifying(false);
+            setError(err.message || 'Verification Failed');
+        }
     };
 
     return (

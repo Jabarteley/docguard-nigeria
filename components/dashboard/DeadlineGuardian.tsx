@@ -30,10 +30,13 @@ const DeadlineGuardian: React.FC<DeadlineGuardianProps> = ({
     isLoading
 }) => {
 
-    const getDeadlineColor = (days: number) => {
-        if (days <= 7) return { color: 'rose', val: 90 };
-        if (days <= 21) return { color: 'amber', val: 60 };
-        return { color: 'emerald', val: 30 };
+
+    const getEscalationStatus = (daysRemaining: number) => {
+        // Project Plan: Alerts at Day 60 (30 left), Day 75 (15 left), Day 85 (5 left)
+        if (daysRemaining <= 5) return { color: 'rose', val: 100, label: 'CRITICAL (Day 85+)' };
+        if (daysRemaining <= 15) return { color: 'amber', val: 85, label: 'URGENT (Day 75+)' };
+        if (daysRemaining <= 30) return { color: 'yellow', val: 65, label: 'WARNING (Day 60+)' };
+        return { color: 'emerald', val: 30, label: 'ON TRACK' };
     };
 
     return (
@@ -75,22 +78,31 @@ const DeadlineGuardian: React.FC<DeadlineGuardianProps> = ({
                     </div>
                 ) : (
                     deadlines.slice(0, 3).map((item) => {
-                        const { color, val } = getDeadlineColor(item.days);
+                        const { color, val, label } = getEscalationStatus(item.days);
+                        const isSovereignRisk = item.entity.toLowerCase().includes('state') || item.entity.toLowerCase().includes('federal');
+
                         return (
                             <div key={item.id} className="flex items-start gap-4">
-                                <div className={`w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center font-black text-sm shrink-0 shadow-lg`}>
+                                <div className={`w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center font-black text-sm shrink-0 shadow-lg relative`}>
                                     <span className={`text-${color}-400`}>{item.days < 10 ? `0${item.days}` : item.days}</span>
                                     <span className="text-[8px] uppercase text-white/40 tracking-[0.2em]">Days</span>
+                                    {isSovereignRisk && (
+                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full border border-white/20 animate-pulse" title="Sovereign Immunity Risk"></div>
+                                    )}
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-sm font-bold text-white tracking-tight">{item.entity}</p>
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-sm font-bold text-white tracking-tight">{item.entity}</p>
+                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-${color}-500/20 text-${color}-300`}>
+                                            {label}
+                                        </span>
+                                    </div>
                                     <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-0.5">{item.task}</p>
                                     <div className="w-full bg-white/10 h-1.5 rounded-full mt-3 overflow-hidden">
                                         <div
-                                            className={`h-full transition-all duration-1000`}
+                                            className={`h-full transition-all duration-1000 bg-${color === 'yellow' ? 'yellow-400' : color === 'rose' ? 'rose-500' : color === 'amber' ? 'amber-500' : 'emerald-500'}`}
                                             style={{
-                                                width: `${val}%`,
-                                                backgroundColor: color === 'rose' ? '#f43f5e' : color === 'amber' ? '#f59e0b' : '#10b981'
+                                                width: `${val}%`
                                             }}
                                         ></div>
                                     </div>

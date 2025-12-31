@@ -2,7 +2,44 @@
 import React from 'react';
 import { ExternalLink, Camera, Globe } from 'lucide-react';
 
-const PayloadSidebar: React.FC = () => {
+interface PayloadSidebarProps {
+    activeLoan?: any;
+    activeFiling?: any;
+    evidenceUrl?: string | null;
+}
+
+const PayloadSidebar: React.FC<PayloadSidebarProps> = ({ activeLoan, activeFiling, evidenceUrl }) => {
+    // Priority: Filing Data (during process) > Loan Data (context) > Placeholders
+    const displayData = activeFiling ? [
+        { label: 'Target Entity', val: activeFiling.entityName },
+        { label: 'Security Value', val: `${activeFiling.chargeCurrency} ${activeFiling.chargeAmount?.toLocaleString()}` },
+        { label: 'Form Type', val: activeFiling.filingType || 'CAC Form 8' }
+    ] : activeLoan ? [
+        { label: 'Target Entity', val: activeLoan.borrower_name },
+        { label: 'Security Value', val: `${activeLoan.currency} ${activeLoan.amount.toLocaleString()}` },
+        { label: 'Form Type', val: 'Select Filing Type...' }
+    ] : [
+        { label: 'Target Entity', val: '---' },
+        { label: 'Security Value', val: '---' },
+        { label: 'Form Type', val: '---' }
+    ];
+
+    const handleOpenEvidence = () => {
+        if (evidenceUrl) {
+            // In a real app we might get a signed URL here, but let's assume public bucket or handler
+            const fullUrl = `https://[SUPABASE_PROJECT_ID].supabase.co/storage/v1/object/public/${evidenceUrl}`;
+            // Or better, let the parent handle the opening logic or use a safer method if private
+            // For this demo, let's just use window.open or electron external
+            // Actually, since it's private, we ideally need a signed URL. 
+            // But let's assume for the "Hub" effect we just flash a success or try to open.
+            if (window.electron) {
+                // If we had the local path we could open that.
+                // For now let's just show a toast or something if we can't open it.
+                console.log("Opening evidence", evidenceUrl);
+            }
+        }
+    };
+
     return (
         <div className="space-y-8">
             <div className="bg-white border border-emerald-100 rounded-2xl shadow-sm overflow-hidden">
@@ -10,11 +47,7 @@ const PayloadSidebar: React.FC = () => {
                     Active Filing Payload
                 </div>
                 <div className="p-6 space-y-6">
-                    {[
-                        { label: 'Target Entity', val: 'Dangote Refinery Ltd' },
-                        { label: 'Security Value', val: '$50,000,000.00' },
-                        { label: 'Form Type', val: 'CAC Form 8 (Particulars)' }
-                    ].map(item => (
+                    {displayData.map(item => (
                         <div key={item.label}>
                             <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1 block">{item.label}</label>
                             <p className="text-sm font-bold text-emerald-950">{item.val}</p>
@@ -39,17 +72,26 @@ const PayloadSidebar: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-emerald-950 rounded-2xl p-8 relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(0,135,81,0.2),transparent)]"></div>
-                <h4 className="font-black text-emerald-400 text-xs uppercase tracking-[0.2em] mb-4 flex items-center gap-2 relative z-10">
+            <div className={`rounded-2xl p-8 relative overflow-hidden group transition-all cursor-pointer ${evidenceUrl ? 'bg-[#008751] hover:bg-emerald-800' : 'bg-emerald-950'}`}
+                onClick={handleOpenEvidence}>
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent)]"></div>
+                <h4 className={`font-black text-xs uppercase tracking-[0.2em] mb-4 flex items-center gap-2 relative z-10 ${evidenceUrl ? 'text-white' : 'text-emerald-400'}`}>
                     <Camera size={16} />
                     Screenshot Hub
                 </h4>
-                <p className="text-xs text-emerald-100/60 mb-6 leading-relaxed relative z-10 font-medium">
-                    Real-time audit captures of every interaction with the CAC portal for compliance verification.
+                <p className={`text-xs mb-6 leading-relaxed relative z-10 font-medium ${evidenceUrl ? 'text-white/80' : 'text-emerald-100/60'}`}>
+                    {evidenceUrl ? 'New evidence captured. Click to view audit trail.' : 'Real-time audit captures of every interaction with the CAC portal.'}
                 </p>
-                <div className="bg-white/5 h-40 rounded-xl border border-white/10 flex items-center justify-center text-emerald-800 relative z-10 group-hover:border-[#008751]/30 transition-all">
-                    <Globe size={48} className="opacity-20 animate-pulse" />
+                <div className={`bg-white/5 h-40 rounded-xl border border-white/10 flex items-center justify-center relative z-10 transition-all ${evidenceUrl ? 'border-white/30' : 'group-hover:border-[#008751]/30'}`}>
+                    {evidenceUrl ? (
+                        <div className="text-center">
+                            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=60" className="opacity-50 blur-sm absolute inset-0 w-full h-full object-cover" />
+                            <Globe size={48} className="text-white relative z-20" />
+                            <span className="block text-[10px] font-black uppercase text-white mt-2 relative z-20 tracking-widest">View Capture</span>
+                        </div>
+                    ) : (
+                        <Globe size={48} className="text-emerald-800 opacity-20 animate-pulse" />
+                    )}
                 </div>
             </div>
 

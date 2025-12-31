@@ -19,7 +19,7 @@ const LogTerminal: React.FC<LogTerminalProps> = ({ logs, isBotActive, progress }
                 <div className="bg-[#0a2e1f] px-6 py-4 flex items-center justify-between border-b border-emerald-900/50">
                     <div className="flex items-center gap-3">
                         <Terminal size={16} className="text-emerald-400" />
-                        <span className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.3em]">GuardBot Engine v3.2.0-NATIVE</span>
+                        <span className="text-[10px] font-black text-emerald-500/80 uppercase tracking-[0.3em]">GuardBot Engine</span>
                     </div>
                     <div className="flex gap-2">
                         {[1, 2, 3].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-emerald-900/50"></div>)}

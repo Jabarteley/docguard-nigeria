@@ -15,9 +15,10 @@ interface FilingHistoryProps {
     filings: Filing[];
     searchTerm: string;
     setSearchTerm: (term: string) => void;
+    onSelectFiling: (filing: Filing) => void;
 }
 
-const FilingHistory: React.FC<FilingHistoryProps> = ({ filings, searchTerm, setSearchTerm }) => {
+const FilingHistory: React.FC<FilingHistoryProps> = ({ filings, searchTerm, setSearchTerm, onSelectFiling }) => {
     return (
         <div className="bg-white border border-emerald-100 rounded-2xl shadow-sm overflow-hidden animate-in slide-in-from-bottom-8 mt-8">
             <div className="p-5 bg-emerald-50/50 border-b border-emerald-100 flex items-center justify-between">
@@ -49,8 +50,12 @@ const FilingHistory: React.FC<FilingHistoryProps> = ({ filings, searchTerm, setS
                     </thead>
                     <tbody className="divide-y divide-emerald-50">
                         {filings.map(filing => (
-                            <tr key={filing.id} className="hover:bg-emerald-50/30 transition-colors group">
-                                <td className="px-6 py-4 font-mono text-emerald-600 text-xs">{filing.id}</td>
+                            <tr
+                                key={filing.id}
+                                onClick={() => onSelectFiling(filing)}
+                                className="hover:bg-emerald-50/30 transition-colors group cursor-pointer active:scale-[0.99] transform duration-100"
+                            >
+                                <td className="px-6 py-4 font-mono text-emerald-600 text-xs group-hover:text-emerald-800 font-bold">{filing.id}</td>
                                 <td className="px-6 py-4">
                                     <div className="font-bold text-emerald-950">{filing.entity}</div>
                                     <div className="text-[10px] text-emerald-500 font-mono">{filing.rcNumber}</div>

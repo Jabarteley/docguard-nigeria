@@ -53,3 +53,31 @@ create policy "Users can update their own documents."
     bucket_id = 'documents' and
     auth.uid() = (storage.foldername(name))[1]::uuid
   );
+
+-- 4. Create a private bucket for evidence (RPA screenshots)
+insert into storage.buckets (id, name, public)
+values ('evidence', 'evidence', false);
+
+-- ALLOW Users to upload their own evidence
+create policy "Users can upload their own evidence."
+  on storage.objects for insert
+  with check (
+    bucket_id = 'evidence' and
+    auth.uid() = (storage.foldername(name))[1]::uuid
+  );
+
+-- ALLOW Users to view their own evidence
+create policy "Users can view their own evidence."
+  on storage.objects for select
+  using (
+    bucket_id = 'evidence' and
+    auth.uid() = (storage.foldername(name))[1]::uuid
+  );
+
+-- ALLOW Users to update their own evidence
+create policy "Users can update their own evidence."
+  on storage.objects for update
+  using (
+    bucket_id = 'evidence' and
+    auth.uid() = (storage.foldername(name))[1]::uuid
+  );
