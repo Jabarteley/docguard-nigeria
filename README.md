@@ -1,51 +1,92 @@
 <div align="center">
+  <img src="public/logo.png" alt="DocGuard Logo" width="120" height="120" />
   <h1>DocGuard Nigeria 🏦🇳🇬</h1>
-  <h3>The Automated Loan Compliance Fortress</h3>
-  <p><i>Draft, Perfect, and Verify Loans in Hours, Not Weeks.</i></p>
+  <h3>The Intelligent Loan Compliance & Origination Operating System</h3>
+  <p><i>From Term Sheet to Perfection in Minutes. Automated. Compliant. Secure.</i></p>
+
+  <p align="center">
+    <a href="#-features">Features</a> •
+    <a href="#-architecture">Architecture</a> •
+    <a href="#-demo-mode">Demo Mode</a> •
+    <a href="#-tech-stack">Tech Stack</a> •
+    <a href="#-installation">Installation</a>
+  </p>
 </div>
 
 ---
 
-## 💡 Inspiration
-In Nigeria's ₦15 trillion corporate lending market, **time kills deals**. A single syndicated loan can involve 3+ weeks of LMA template adaptation and 21+ days of manual CAC registration.
+## 💡 The Problem
+In Nigeria's ₦15 trillion corporate lending market, **administrative friction kills deals**. 
+*   **LMA Adaptation**: Manual conversion of English law templates to Nigerian context takes weeks.
+*   **CAC Perfection**: Filing charges at the Corporate Affairs Commission is manual, opaque, and prone to "query" delays.
+*   **Disconnected Data**: KYC, Legal, and Compliance teams work in silos, re-typing the same RC Numbers and TINs 10x.
 
-**DocGuard** is an AI-powered desktop command center that automates this entire lifecycle, bridging the gap between international LMA standards and Nigerian regulatory requirements (CAMA 2020).
+## 🛡️ The Solution: DocGuard
+**DocGuard** is an AI-powered desktop command center that automates the entire secured lending lifecycle. It unifies **Origination**, **Documentation**, **KYC**, and **Regulatory Filing** into a single, intelligent workflow.
 
-## 🚀 Features
+## 🚀 Core Capabilities
 
-### 1. LMA Smart Document Builder
-*   **AI Clause Analysis**: Gemini-powered risk scoring for every clause.
-*   **Magic Rewrite**: One-click adaptation to Nigerian legal context.
-*   **Smart Variables**: Auto-detection and filling of `{{Borrower}}`, `{{Facility Amount}}`, etc.
-*   **Enhanced Entity Replacement**: Automatically injects "Borrower Name (with Registration No. RC...)" for legal precision.
+### 1. 🧠 Cross-Module Intelligence (New)
+*   **Unified Data Flow**: Enter borrower details *once* during origination. DocGuard automatically propagates **RC Number**, **TIN**, and **BVN** to KYC checks, Legal Docs, and CAC Filings.
+*   **Context-Aware**: Linking a loan to any module instantly pre-fills forms, eliminating manual entry errors.
 
-### 2. CAC Registry Bot (RPA Simulation)
-*   **Automated Filing**: Simulates the manual perfection process at the Corporate Affairs Commission.
-*   **Smart Pre-filling**: Pulls RC Number and Charge details directly from the linked Loan facility.
-*   **Real-time Logging**: Terminal-style visibility into every step.
-*   **Native Notifications**: Desktop alerts when filings are perfected.
-*   **Mock Verification Bypass**: Supports regex-based entity verification (e.g., `RC...`) for demo flexibility.
+### 2. 📝 LMA Smart Document Builder
+*   **AI Clause Analysis**: Gemini 2.0 Flash analyzes clauses for risk against Nigerian Evidence Act 2023.
+*   **Magic Rewrite**: One-click adaptation of UK-style covenants to Nigerian customized clauses.
+*   **Legal Precision**: Automatically injects full corporate descriptors (e.g., *"Dangote Industries (with Registration No. RC123456)"*) into definitions.
 
-### 3. KYC Orchestrator
-*   **Identity Verification**: Simulated NIN/BVN checks with mock regex support (10-12 digit TINs).
-*   **Corporate Due Diligence**: Auto-verifies RC Numbers and TINs from the loan context.
-*   **Document Scanner**: AI-powered OCR and validity feedback.
-*   **Liveness Detection**: Integrated camera interface.
+### 3. 🏛️ CAC Registry Bot (RPA)
+*   **Automated Perfection**: Native Electron robot simulates interaction with the CAC portal.
+*   **Screenshot Hub & Evidence Vault**: Captures and cryptographically timestamps proof of filing (Uploads/Screenshots) to a secure Supabase bucket.
+*   **Smart Pre-fill**: Auto-populates Charge Forms based on the linked loan's facility type and amount.
 
-### 4. Loan Origination Pipeline
-*   **Centralized Facility Management**: Create and track loans with specific types, durations, and currencies.
-*   **Comprehensive Data Capture**: Captures RC Number, TIN, and BVN at source for downstream automation.
-*   **Deep Context Linking**: Link documents, regulatory filings, and KYC checks directly to active facilities.
-*   **Unified Dashboard**: Monitor the entire lifecycle of a loan from origination to perfection.
+### 4. 🕵️‍♂️ KYC Orchestrator
+*   **Corporate Due Diligence**: Parallel verification of **CAC Status** and **FIRS Tax Compliance**.
+*   **Identity**: Simulated **NIN** and **BVN** validation for directors.
+*   **Liveness**: Integrated webcam biometrics.
 
-## 🛠️ Tech Stack
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | React 19 + TypeScript + Tailwind CSS v4 |
-| **Desktop Shell** | Electron 39 (Secure IPC + Context Isolation) |
-| **AI Engine** | Google Gemini API (`@google/genai`) |
-| **Build System** | Vite + esbuild + electron-builder |
-| **Database** | Supabase (PostgreSQL) |
+### 5. ⏰ Deadline Guardian
+*   **Active Monitoring**: Tracks the mandatory **90-day registration window** (CAMA 2020).
+*   **Smart Alerts**: Native desktop notifications warn you when a filing is approaching the "Void" risk threshold.
+
+### 6. 💼 Origination Pipeline
+*   **Structured Capture**: Standardized intake for Term Facilities, Revolving Credit, and Project Finance.
+*   **Pipeline Dashboard**: Kanban-style view of all deals from "Lead" to "Disbursed".
+## 🎮 Demo Mode (Verification Guide)
+
+The application includes sophisticated mock services to demonstrate the "Happy Path" without needing live government API keys.
+
+| Service | Trigger Input | Behavior |
+| :--- | :--- | :--- |
+| **CAC Registry** | `RC...` (e.g., `RC123456`) | Returns a valid "Active" limited liability company. |
+| **CAC Registry** | Other | Throws "Company Not Found" error. |
+| **FIRS (Tax)** | `10-12 Digits` (e.g., `1000234567`) | Returns a valid "Tax Compliant" status. |
+| **FIRS (Tax)** | Other | Throws "TIN Invalid" error. |
+
+**Try this Flow:**
+1.  **Originate**: Create a loan for "Lagos Tech Ltd" with RC Number `RC999999` and TIN `1112223334`.
+2.  **KYC**: Go to KYC, link "Lagos Tech Ltd". Watch the Corporate Verification step **auto-pass** with green checks.
+3.  **Registry**: Go to CAC Registry, link "Lagos Tech Ltd". Click "Create Charge". Watch the form **auto-fill** with the RC Number.
+4.  **Docs**: Go to Doc Builder, link "Lagos Tech Ltd". See "The Borrower" replaced with **"Lagos Tech Ltd (with Registration No. RC999999)"**.
+
+## 🏗️ Architecture & Tech Stack
+
+### Frontend (The Shell)
+*   **Framework**: React 19 (Latest)
+*   **Language**: TypeScript 5.8
+*   **Styling**: Tailwind CSS v4 (Oxidized)
+*   **Bundler**: Vite 6.2 (Superfast HMR)
+*   **Icons**: Lucide React
+
+### Desktop Layer (Electron)
+*   **Engine**: Electron 39
+*   **Security**: Context Isolation, Preload Scripts, encrypted local secrets.
+*   **Features**: Native File System Access (for saving PDFs), Native Notifications, Shell Integration.
+
+### Backend & AI (The Brain)
+*   **Database**: Supabase (PostgreSQL 15) with Row Level Security (RLS).
+*   **Storage**: Supabase Storage (Evidence Buckets).
+*   **AI**: Google Gemini 2.0 Flash (`@google/genai` SDK) for clause analysis and risk scoring.
 
 ## 📦 Installation
 **Prerequisites**: Node.js v18+
