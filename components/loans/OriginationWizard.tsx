@@ -44,7 +44,8 @@ const OriginationWizard: React.FC = () => {
                 tracking_data: {
                     origination_date: new Date().toISOString(),
                     next_review: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 days out
-                }
+                },
+                pipeline_stage: 'Review'
             };
 
             const { data, error } = await supabase

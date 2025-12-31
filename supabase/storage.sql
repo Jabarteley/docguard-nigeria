@@ -3,14 +3,18 @@
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true);
 
--- 2. Set up security policies
+-- 2. Create a private bucket for documents
+insert into storage.buckets (id, name, public)
+values ('documents', 'documents', false);
 
--- Allow public access to view avatars
+-- 3. Set up security policies
+
+-- ALLOW Public access to avatars
 create policy "Avatar images are publicly accessible."
   on storage.objects for select
   using ( bucket_id = 'avatars' );
 
--- Allow authenticated users to upload their own avatar
+-- ALLOW Users to upload their own avatars
 create policy "Users can upload their own avatar."
   on storage.objects for insert
   with check (
@@ -18,10 +22,34 @@ create policy "Users can upload their own avatar."
     auth.uid() = (storage.foldername(name))[1]::uuid
   );
 
--- Allow users to update their own avatar
+-- ALLOW Users to update their own avatars
 create policy "Users can update their own avatar."
   on storage.objects for update
   using (
     bucket_id = 'avatars' and
+    auth.uid() = (storage.foldername(name))[1]::uuid
+  );
+
+-- ALLOW Users to upload their own documents
+create policy "Users can upload their own documents."
+  on storage.objects for insert
+  with check (
+    bucket_id = 'documents' and
+    auth.uid() = (storage.foldername(name))[1]::uuid
+  );
+
+-- ALLOW Users to view their own documents
+create policy "Users can view their own documents."
+  on storage.objects for select
+  using (
+    bucket_id = 'documents' and
+    auth.uid() = (storage.foldername(name))[1]::uuid
+  );
+
+-- ALLOW Users to update their own documents
+create policy "Users can update their own documents."
+  on storage.objects for update
+  using (
+    bucket_id = 'documents' and
     auth.uid() = (storage.foldername(name))[1]::uuid
   );

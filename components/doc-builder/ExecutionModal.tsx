@@ -11,13 +11,18 @@ import {
     ShieldCheck,
     ChevronRight,
     Loader2,
-    AlertOctagon
+    AlertOctagon,
+    FileText,
+    FileDown
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface ExecutionModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onExecute?: () => Promise<void>;
+    documentTitle?: string;
+    signerName?: string;
 }
 
 interface Signatory {
@@ -27,39 +32,59 @@ interface Signatory {
     status: 'Pending' | 'Signed';
 }
 
-const ExecutionModal: React.FC<ExecutionModalProps> = ({ isOpen, onClose }) => {
+const ExecutionModal: React.FC<ExecutionModalProps> = ({
+    isOpen,
+    onClose,
+    onExecute,
+    documentTitle = 'Document',
+    signerName = 'User'
+}) => {
     const { showToast } = useToast();
     const [executionStep, setExecutionStep] = useState(1);
     const [isExecuting, setIsExecuting] = useState(false);
     const [completed, setCompleted] = useState(false);
     const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const [signatories, setSignatories] = useState<Signatory[]>([
-        { id: '1', name: 'Aliko Dangote', role: 'Director, Borrower', status: 'Pending' },
-        { id: '2', name: 'Adeola John', role: 'Legal Counsel, Lender', status: 'Pending' }
+        { id: '1', name: signerName || 'Authorized Signatory', role: 'Authorized Signatory', status: 'Pending' }
     ]);
 
     if (!isOpen) return null;
 
     const proceedExecution = () => {
-        // This logic needs to be adapted as executionStep is removed.
-        // Assuming for now that proceeding directly leads to final confirmation.
-        setShowFinalConfirm(true);
+        if (executionStep < 3) {
+            setExecutionStep(executionStep + 1);
+        } else {
+            setShowFinalConfirm(true);
+        }
     };
 
     const finalizeExecution = async () => {
         setShowFinalConfirm(false);
         setIsExecuting(true);
 
-        // Persist finalized state to Supabase
         try {
-            await supabase.from('loans').update({ status: 'Execution' }).eq('id', 'LD-2024-DEMO');
-        } catch (e) { }
+            // Call the onExecute callback (PDF export)
+            if (onExecute) {
+                await onExecute();
+            }
 
-        setTimeout(() => {
+            // Update signer status
+            setSignatories(prev => prev.map(s => ({ ...s, status: 'Signed' as const })));
+
+            setTimeout(() => {
+                setIsExecuting(false);
+                setCompleted(true);
+                showToast("Document successfully executed. Evidence Act 2023 certificates generated.", 'success');
+                setTimeout(() => {
+                    onClose();
+                    setExecutionStep(1);
+                    setCompleted(false);
+                }, 1500);
+            }, 2000);
+        } catch (error) {
             setIsExecuting(false);
-            onClose();
-            showToast("Document successfully executed. Evidence Act 2023 certificates generated and stored in docguard cloud.", 'success');
-        }, 3000);
+            showToast("Execution failed. Please try again.", 'error');
+        }
     };
 
     return (
@@ -132,12 +157,12 @@ const ExecutionModal: React.FC<ExecutionModalProps> = ({ isOpen, onClose }) => {
                                 </h3>
                                 <div className="space-y-3">
                                     {signatories.map(s => (
-                                        <div key={s.id} className="bg-white p-4 rounded-xl flex items-center justify-between border border-emerald-100 shadow-sm">
+                                        <div key={s.id} className="bg-white p-4 rounded-xl flex items-center justify-between border border-emerald-100 shadow-sm animate-in fade-in">
                                             <div>
                                                 <p className="text-sm font-black text-emerald-950">{s.name}</p>
                                                 <p className="text-[10px] text-emerald-500 font-bold uppercase">{s.role}</p>
                                             </div>
-                                            <span className="text-[10px] font-black text-[#008751] bg-emerald-50 px-3 py-1 rounded-full uppercase">Verified BVN</span>
+                                            <span className="text-[10px] font-black text-[#008751] bg-emerald-50 px-3 py-1 rounded-full uppercase shrink-0">Verified BVN</span>
                                         </div>
                                     ))}
                                 </div>
@@ -172,46 +197,101 @@ const ExecutionModal: React.FC<ExecutionModalProps> = ({ isOpen, onClose }) => {
                         </div>
                     )}
 
-                    {executionStep === 3 && (
+                    {executionStep === 3 && !completed && (
                         <div className="space-y-6 animate-in slide-in-from-bottom-4 text-center py-8">
-                            <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-emerald-100 relative">
-                                <PenTool size={40} className="text-[#008751]" />
-                                <div className="absolute inset-0 border-4 border-[#008751] border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-emerald-100">
+                                <FileDown size={40} className="text-[#008751]" />
                             </div>
-                            <h3 className="text-xl font-black text-emerald-950">Ready for Execution</h3>
-                            <p className="text-sm text-emerald-600/70 font-medium max-w-xs mx-auto leading-relaxed">
-                                Final documents will be stamped with the DocGuard Digital Notary Seal and sent to the CAC perfection queue.
-                            </p>
+                            <h3 className="text-xl font-black text-emerald-950">Final Review</h3>
+                            <div className="max-w-md mx-auto space-y-3 text-left">
+                                <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl">
+                                    <Check size={18} className="text-[#008751] shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-emerald-950">Digital Signature Applied</p>
+                                        <p className="text-[10px] text-emerald-600/70">Evidence Act 2023 compliant</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl">
+                                    <Check size={18} className="text-[#008751] shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-emerald-950">PDF Generation Ready</p>
+                                        <p className="text-[10px] text-emerald-600/70">Download to your system</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl">
+                                    <Check size={18} className="text-[#008751] shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-emerald-950">Cloud Archive</p>
+                                        <p className="text-[10px] text-emerald-600/70">Secure backup with audit trail</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {completed && (
+                        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in text-center py-12">
+                            <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-emerald-200 relative">
+                                <Check size={48} className="text-[#008751]" />
+                                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full border-2 border-emerald-500 flex items-center justify-center">
+                                    <FileDown size={16} className="text-emerald-600" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-black text-emerald-950">Execution Complete!</h3>
+                                <p className="text-sm text-emerald-600/70 font-medium max-w-sm mx-auto leading-relaxed">
+                                    Your document has been signed, exported, and securely archived. Check your downloads folder for the PDF.
+                                </p>
+                            </div>
+                            <div className="flex items-center justify-center gap-2 text-xs text-emerald-700 bg-emerald-50 py-3 px-4 rounded-xl max-w-sm mx-auto">
+                                <ShieldCheck size={16} className="text-emerald-600" />
+                                <span className="font-bold">Evidence Act 2023 Certificate Generated</span>
+                            </div>
                         </div>
                     )}
                 </div>
 
                 <div className="p-8 border-t border-emerald-50 bg-emerald-50/20 flex gap-4">
-                    {executionStep > 1 && (
+                    {!completed && executionStep > 1 && (
                         <button
                             onClick={() => setExecutionStep(executionStep - 1)}
-                            className="flex-1 py-4 bg-white text-emerald-900 border border-emerald-200 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-emerald-50 transition-all"
+                            disabled={isExecuting}
+                            className="flex-1 py-4 bg-white text-emerald-900 border border-emerald-200 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-emerald-50 transition-all disabled:opacity-50"
                         >
                             Back
                         </button>
                     )}
-                    <button
-                        onClick={proceedExecution}
-                        disabled={isExecuting}
-                        className="flex-[2] py-4 bg-[#008751] text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-emerald-700 shadow-xl shadow-emerald-900/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                    >
-                        {isExecuting ? (
-                            <>
-                                <Loader2 className="animate-spin" size={18} />
-                                Securing Documents...
-                            </>
-                        ) : (
-                            <>
-                                {executionStep === 3 ? 'Execute with E-Signature' : 'Proceed to Next Step'}
-                                <ChevronRight size={18} />
-                            </>
-                        )}
-                    </button>
+                    {!completed && (
+                        <button
+                            onClick={proceedExecution}
+                            disabled={isExecuting}
+                            className="flex-[2] py-4 bg-[#008751] text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-emerald-700 shadow-xl shadow-emerald-900/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                        >
+                            {isExecuting ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={18} />
+                                    Generating & Signing PDF...
+                                </>
+                            ) : (
+                                <>
+                                    {executionStep === 3 ? 'Execute with E-Signature' : 'Proceed to Next Step'}
+                                    <ChevronRight size={18} />
+                                </>
+                            )}
+                        </button>
+                    )}
+                    {completed && (
+                        <button
+                            onClick={() => {
+                                onClose();
+                                setExecutionStep(1);
+                                setCompleted(false);
+                            }}
+                            className="w-full py-4 bg-[#008751] text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-emerald-700 shadow-xl shadow-emerald-900/20 transition-all active:scale-95"
+                        >
+                            Close
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

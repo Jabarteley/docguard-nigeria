@@ -60,7 +60,7 @@ const KYCOrchestrator: React.FC = () => {
                 <div className="p-3 bg-emerald-100 text-[#008751] rounded-2xl mb-2 cursor-pointer hover:bg-emerald-200 transition-colors" onClick={() => setIsLoanSelectorOpen(true)}>
                     <Fingerprint size={32} />
                 </div>
-                <h1 className="text-3xl font-extrabold text-emerald-950 tracking-tight">KYC 2.0 Orchestrator</h1>
+                <h1 className="text-3xl font-extrabold text-emerald-950 tracking-tight">KYC Verification</h1>
                 <p className="text-emerald-600/70 font-medium max-w-lg">
                     Compliance-first identity verification pipeline with real-time biometric and document analysis.
                     <br />

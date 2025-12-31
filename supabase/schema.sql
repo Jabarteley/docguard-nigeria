@@ -6,6 +6,7 @@ create table profiles (
   avatar_url text,
   organization text,
   role_title text,
+  signature_url text, -- Added for persistent e-signatures
   preferences jsonb default '{}'::jsonb,
   updated_at timestamp with time zone,
   
@@ -35,6 +36,7 @@ create table loans (
   duration_months integer,
   start_date date,
   status text default 'Active', -- Active, Perfected, Defaulted, Closed
+  pipeline_stage text default 'Application', -- Workflow Stage
   tracking_data jsonb default '{}'::jsonb, -- Store dynamic tracking info
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
@@ -55,6 +57,7 @@ create table documents (
   content text,
   template_type text,
   status text default 'draft', -- draft, review, final
+  file_url text, -- Path to PDF in Storage
   created_at timestamp with time zone default timezone('utc'::text, now()),
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
@@ -108,6 +111,26 @@ alter table kyc_requests enable row level security;
 
 create policy "Users can CRUD own kyc." on kyc_requests
   for all using (auth.uid() = user_id);
+
+-- T_SIGNATURES: Audit Trail for E-Signatures
+create table signatures (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users not null,
+  document_id uuid references documents(id),
+  signature_url text not null,
+  ip_address text,
+  signed_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Enable RLS for Signatures
+alter table signatures enable row level security;
+
+create policy "Users can insert own signatures" on signatures
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can view own signatures" on signatures
+  for select using (auth.uid() = user_id);
+
 
 -- TRIGGER: Auto-create profile on signup
 create or replace function public.handle_new_user() 

@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Upload, Briefcase, Loader2, Save, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { supabase } from '../../lib/supabase';
+import SignaturePad from './SignaturePad';
 
 const AccountSettings: React.FC = () => {
     const { user, profile, updateProfile } = useAuth();
@@ -10,6 +10,7 @@ const AccountSettings: React.FC = () => {
     const [org, setOrg] = useState('');
     const [role, setRole] = useState('');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -22,6 +23,7 @@ const AccountSettings: React.FC = () => {
             setOrg(profile.organization || '');
             setRole(profile.role_title || '');
             setAvatarUrl(profile.avatar_url);
+            setSignatureUrl(profile.signature_url || null); // Fix: Assuming profile interface updated
         } else if (user) {
             // Fallback
             setFullName(user.user_metadata?.full_name || '');
@@ -36,9 +38,10 @@ const AccountSettings: React.FC = () => {
             await updateProfile({
                 full_name: fullName,
                 organization: org,
-                role_title: role
+                role_title: role,
+                signature_url: signatureUrl
             });
-            setMsg({ type: 'success', text: 'Profile updated successfully.' });
+            setMsg({ type: 'success', text: 'Profile & Signature updated successfully.' });
         } catch (err: any) {
             setMsg({ type: 'error', text: err.message || 'Failed to update profile.' });
         } finally {
@@ -102,6 +105,14 @@ const AccountSettings: React.FC = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            {msg && (
+                <div className={`p-4 rounded-xl text-xs font-bold flex items-center justify-between ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                    <span>{msg.text}</span>
+                    <button onClick={() => setMsg(null)}><X size={14} /></button>
+                </div>
+            )}
+
+            {/* Profile Card */}
             <div className="bg-white p-8 rounded-[32px] border border-emerald-100 shadow-sm">
                 <div className="flex items-center gap-6 mb-8">
                     <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
@@ -135,13 +146,6 @@ const AccountSettings: React.FC = () => {
                         )}
                     </div>
                 </div>
-
-                {msg && (
-                    <div className={`p-4 rounded-xl text-xs font-bold mb-6 flex items-center justify-between ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                        <span>{msg.text}</span>
-                        <button onClick={() => setMsg(null)}><X size={14} /></button>
-                    </div>
-                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -198,6 +202,20 @@ const AccountSettings: React.FC = () => {
                         {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>
+            </div>
+
+            {/* Digital Signature Section */}
+            <div className="bg-white p-8 rounded-[32px] border border-emerald-100 shadow-sm">
+                <h3 className="text-lg font-black text-emerald-950 mb-2">Digital Signature</h3>
+                <p className="text-xs text-emerald-600/60 mb-6 font-medium">Create your persistent digital signature for automated document execution.</p>
+
+                <SignaturePad
+                    currentSignature={signatureUrl}
+                    onSave={(url) => {
+                        setSignatureUrl(url);
+                        updateProfile({ signature_url: url });
+                    }}
+                />
             </div>
         </div>
     );

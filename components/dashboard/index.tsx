@@ -52,16 +52,20 @@ const Dashboard: React.FC = () => {
         { label: 'Risk Flags', value: '0', change: '0%', icon: AlertCircle, color: '#e11d48' },
     ]);
 
+    const [deadlines, setDeadlines] = useState<any[]>([]);
+    const [isDeadlinesLoading, setIsDeadlinesLoading] = useState(true);
+
     const fetchRiskAnalysis = async () => {
         setIsAnalyzing(true);
         try {
-            // In a real app, we'd fetch actual pending deadlines from DB to pass to AI
-            const risks = [
-                { days: 5, entity: 'Ibeto Cement', task: 'CAC Charge Registration', val: 94 },
-                { days: 15, entity: 'Innoson Motors', task: 'STMA Filing (NCR)', val: 75 },
-                { days: 42, entity: 'MainOne Facility', task: 'Shared Security Deed', val: 45 }
-            ];
-            const result = await analyzePortfolioRisks(risks);
+            // Use real deadlines data for AI analysis
+            const risksForAI = deadlines.map(d => ({
+                days: d.days,
+                entity: d.entity,
+                task: d.task,
+                val: d.days <= 7 ? 90 : d.days <= 21 ? 60 : 30
+            }));
+            const result = await analyzePortfolioRisks(risksForAI);
             setRiskAnalysis(result);
         } catch (err) {
             console.error("AI Analysis failed", err);
@@ -73,6 +77,7 @@ const Dashboard: React.FC = () => {
     const fetchDashboardData = async () => {
         if (!user) return;
         setIsLoading(true);
+        setIsDeadlinesLoading(true);
 
         try {
             // 1. Fetch Stats
@@ -137,10 +142,38 @@ const Dashboard: React.FC = () => {
 
             setRecentItems(combined);
 
+            // 3. Fetch Deadlines from Filings (pending ones with submission_date)
+            const { data: pendingFilings } = await supabase
+                .from('filings')
+                .select('id, entity_name, filing_type, submission_date, status')
+                .eq('user_id', user.id)
+                .neq('status', 'Perfected')
+                .order('submission_date', { ascending: true })
+                .limit(5);
+
+            const now = new Date();
+            const deadlineItems = pendingFilings?.map(f => {
+                const submissionDate = new Date(f.submission_date);
+                // Calculate days remaining (assuming a 90-day perfection window from submission)
+                const perfectionDeadline = new Date(submissionDate);
+                perfectionDeadline.setDate(perfectionDeadline.getDate() + 90);
+                const daysRemaining = Math.max(0, Math.ceil((perfectionDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+                return {
+                    id: f.id,
+                    days: daysRemaining,
+                    entity: f.entity_name,
+                    task: f.filing_type || 'CAC Filing'
+                };
+            }) || [];
+
+            setDeadlines(deadlineItems);
+
         } catch (e) {
             console.error("Dashboard fetch failed", e);
         } finally {
             setIsLoading(false);
+            setIsDeadlinesLoading(false);
         }
     };
 
@@ -185,6 +218,8 @@ const Dashboard: React.FC = () => {
                     riskAnalysis={riskAnalysis}
                     isAnalyzing={isAnalyzing}
                     onRunAnalysis={fetchRiskAnalysis}
+                    deadlines={deadlines}
+                    isLoading={isDeadlinesLoading}
                 />
             </div>
         </div>
