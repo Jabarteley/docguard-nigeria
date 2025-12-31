@@ -17,26 +17,31 @@ In Nigeria's ₦15 trillion corporate lending market, **time kills deals**. A si
 *   **AI Clause Analysis**: Gemini-powered risk scoring for every clause.
 *   **Magic Rewrite**: One-click adaptation to Nigerian legal context.
 *   **Smart Variables**: Auto-detection and filling of `{{Borrower}}`, `{{Facility Amount}}`, etc.
+*   **Enhanced Entity Replacement**: Automatically injects "Borrower Name (with Registration No. RC...)" for legal precision.
 
 ### 2. CAC Registry Bot (RPA Simulation)
 *   **Automated Filing**: Simulates the manual perfection process at the Corporate Affairs Commission.
+*   **Smart Pre-filling**: Pulls RC Number and Charge details directly from the linked Loan facility.
 *   **Real-time Logging**: Terminal-style visibility into every step.
 *   **Native Notifications**: Desktop alerts when filings are perfected.
+*   **Mock Verification Bypass**: Supports regex-based entity verification (e.g., `RC...`) for demo flexibility.
 
 ### 3. KYC Orchestrator
-*   **Identity Verification**: Simulated NIN/BVN checks.
+*   **Identity Verification**: Simulated NIN/BVN checks with mock regex support (10-12 digit TINs).
+*   **Corporate Due Diligence**: Auto-verifies RC Numbers and TINs from the loan context.
 *   **Document Scanner**: AI-powered OCR and validity feedback.
 *   **Liveness Detection**: Integrated camera interface.
 
 ### 4. Loan Origination Pipeline
 *   **Centralized Facility Management**: Create and track loans with specific types, durations, and currencies.
+*   **Comprehensive Data Capture**: Captures RC Number, TIN, and BVN at source for downstream automation.
 *   **Deep Context Linking**: Link documents, regulatory filings, and KYC checks directly to active facilities.
 *   **Unified Dashboard**: Monitor the entire lifecycle of a loan from origination to perfection.
 
 ## 🛠️ Tech Stack
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | React 19 + TypeScript + Tailwind CSS |
+| **Frontend** | React 19 + TypeScript + Tailwind CSS v4 |
 | **Desktop Shell** | Electron 39 (Secure IPC + Context Isolation) |
 | **AI Engine** | Google Gemini API (`@google/genai`) |
 | **Build System** | Vite + esbuild + electron-builder |
