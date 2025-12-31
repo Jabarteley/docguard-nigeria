@@ -11,6 +11,7 @@ interface Loan {
     currency: string;
     loan_type: string;
     status: string;
+    rc_number?: string;
 }
 
 interface LoanSelectorProps {

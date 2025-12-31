@@ -99,7 +99,24 @@ app.whenReady().then(() => {
     });
 
     ipcMain.handle('start-rpa', async (event, payload) => {
-        await runRpaSimulation(mainWindow);
+        return await runRpaSimulation(mainWindow);
+    });
+
+    ipcMain.handle('read-file', async (event, filePath: string) => {
+        // SECURITY: Only allow reading from userData (where evidence is saved)
+        const allowedDir = app.getPath('userData');
+        if (!filePath.startsWith(allowedDir)) {
+            return { success: false, error: 'Access denied: File outside safe directory' };
+        }
+
+        try {
+            const data = fs.readFileSync(filePath);
+            // Return as base64 string to avoid serialization issues over IPC
+            // or just return the uint8array buffer (Electron handles this well usually)
+            return { success: true, data: data };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
     });
 
     // SECURE STORAGE - SIMPLIFIED FOR LINUX

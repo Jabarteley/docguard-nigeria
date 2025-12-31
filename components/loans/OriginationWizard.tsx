@@ -14,7 +14,11 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../common/Toast';
 
-const OriginationWizard: React.FC = () => {
+interface OriginationWizardProps {
+    onSuccess?: (loanId: string) => void;
+}
+
+const OriginationWizard: React.FC<OriginationWizardProps> = ({ onSuccess }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { showToast } = useToast();
@@ -57,8 +61,11 @@ const OriginationWizard: React.FC = () => {
             if (error) throw error;
 
             // Redirect to Loan Dashboard or Doc Builder with context
-            // For now, let's go to Doc Builder with the new loan pre-selected (via query param or state)
-            navigate('/doc-builder', { state: { loanId: data.id, borrower: data.borrower_name } });
+            if (onSuccess) {
+                onSuccess(data.id);
+            } else {
+                navigate('/doc-builder', { state: { loanId: data.id, borrower: data.borrower_name } });
+            }
 
         } catch (err: any) {
             console.error(err);

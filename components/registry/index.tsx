@@ -33,7 +33,9 @@ const ChargeRegistry: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filings, setFilings] = useState<Filing[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeLoanId, setActiveLoanId] = useState<string | null>(null);
+    const [activeLoan, setActiveLoan] = useState<any | null>(null);
+    const [activeFilingPayload, setActiveFilingPayload] = useState<any | null>(null);
+    const [activeEvidenceUrl, setActiveEvidenceUrl] = useState<string | null>(null);
     const [selectedFilingId, setSelectedFilingId] = useState<string | null>(null);
     const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
 
@@ -110,7 +112,40 @@ const ChargeRegistry: React.FC = () => {
                 window.electron.offRPAUpdate(handleUpdate);
             };
         }
-    }, []);
+    }, [user]);
+
+    // Derived Handler for Filing Selection
+    const handleFilingSelection = (filing: Filing) => {
+        if (filing.status === 'Pending') {
+            // Re-open form with pre-filled details for simple editing/completion
+            // Note: In a real app we'd fetch full details for the form, but partial is ok for now.
+            setIsFilingFormOpen(true);
+            setActiveEvidenceUrl(null);
+            // We'd ideally want to pass the specific filing ID to update mode, but for now let's just prefill text
+            // To support "Resume", we'd need FilingForm to accept an existing ID.
+            // For this demo iteration, we'll open Detail View instead for all, and add "Resume" button there?
+            // Actually, user explicitly asked for "editing and completing".
+            setSelectedFilingId(filing.id); // View details first, then "Resume" from there is safer pattern?
+            // OR: Just open detail view for all, and detail view has "Resume" if pending.
+            // User Request: "filing history should be clickable, for editing and completeing incomplete filing"
+            if (filing.status === 'Pending') {
+                // Fetch full details to prefill form?
+                // Let's assume detail view is the gateway.
+                setSelectedFilingId(filing.id);
+                setIsDetailViewOpen(true);
+            } else {
+                setSelectedFilingId(filing.id);
+                setIsDetailViewOpen(true);
+            }
+        } else {
+            setSelectedFilingId(filing.id);
+            setIsDetailViewOpen(true);
+            // If we had the full filing object with metadata here we could set it, but 'Filing' interface is simplified.
+            // Let's rely on FilingDetailView to fetch valid data, or we just persist the URL if we moved it to the list.
+            // For now, let's just clear it on new selection to be safe until we fetch full details.
+            setActiveEvidenceUrl(null);
+        }
+    };
 
     // Handle navigation state
     useEffect(() => {
@@ -131,6 +166,7 @@ const ChargeRegistry: React.FC = () => {
     const startAutomatedFiling = async (filingData: import('./FilingForm').FilingFormData) => {
         if (!user) return;
 
+        setActiveFilingPayload(filingData);
         setIsBotActive(true);
         setLogs([]);
         setProgress(0);
@@ -144,7 +180,7 @@ const ChargeRegistry: React.FC = () => {
                 .from('filings')
                 .insert({
                     user_id: user.id,
-                    loan_id: filingData.loanId || activeLoanId,
+                    loan_id: filingData.loanId || activeLoan?.id,
                     document_id: filingData.documentId,
                     reference_id: refId,
                     entity_name: filingData.entityName,
@@ -167,12 +203,58 @@ const ChargeRegistry: React.FC = () => {
 
             if (window.electron) {
                 // Native Electron Mode with real data
-                await window.electron.startRPA({
-                    ref: refId,
+                const rpaResult = await window.electron.startRPA({
+                    ref: refId, // Initial ref, will be overwritten by RPA's unique ref
                     entity: filingData.entityName,
                     rcNumber: filingData.rcNumber,
                     filingId: filing.id
                 });
+
+                if (rpaResult && rpaResult.success) {
+                    let evidenceUrl = null;
+
+                    // Upload Evidence to Cloud
+                    if (rpaResult.evidencePath) {
+                        try {
+                            const readResult = await window.electron.readFile(rpaResult.evidencePath);
+                            if (readResult.success && readResult.data) {
+                                const fileName = `evidence/${user.id}/${rpaResult.filingRef}_${Date.now()}.png`;
+                                const { error: uploadError } = await supabase.storage
+                                    .from('evidence') // Ensure this bucket exists
+                                    .upload(fileName, readResult.data, {
+                                        contentType: 'image/png'
+                                    });
+
+                                if (!uploadError) {
+                                    evidenceUrl = fileName;
+                                    addLog('Evidence uploaded securely to cloud.', 'success');
+                                    setActiveEvidenceUrl(fileName); // Show in sidebar immediatey
+                                } else {
+                                    console.warn('Evidence upload failed:', uploadError);
+                                    addLog('Cloud upload failed for evidence.', 'error');
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Evidence processing error:', err);
+                        }
+                    }
+
+                    await supabase
+                        .from('filings')
+                        .update({
+                            status: 'Perfected',
+                            reference_id: rpaResult.filingRef,
+                            metadata: {
+                                ...filing.metadata,
+                                completedAt: new Date().toISOString(),
+                                evidencePath: rpaResult.evidencePath, // Local path (Electron)
+                                evidenceUrl: evidenceUrl // Cloud path (Supabase)
+                            }
+                        })
+                        .eq('id', filing.id);
+
+                    showToast(`Filing perfected! Ref: ${rpaResult.filingRef}`, 'success');
+                }
             } else {
                 // Web Mode: Simulate real backend processing delay but use DB updates
                 // Ideally this triggers a backend Edge Function, but for this frontend demo
@@ -218,7 +300,7 @@ const ChargeRegistry: React.FC = () => {
                     isOpen={isLoanSelectorOpen}
                     onClose={() => setIsLoanSelectorOpen(false)}
                     onSelect={(loan) => {
-                        setActiveLoanId(loan.id);
+                        setActiveLoan(loan);
                         setSearchTerm(loan.borrower_name); // Auto-filter filings by borrower
                         showToast(`RPA Context set to: ${loan.borrower_name} (${loan.amount.toLocaleString()} ${loan.currency})`, 'success');
                         // Ideally pass this loan context to PayloadSidebar or RPA invocation
@@ -228,9 +310,16 @@ const ChargeRegistry: React.FC = () => {
                     isOpen={isFilingFormOpen}
                     onClose={() => setIsFilingFormOpen(false)}
                     onSubmit={startAutomatedFiling}
-                    linkedLoanId={activeLoanId}
+                    linkedLoanId={activeLoan?.id}
                     linkedDocumentId={location.state?.documentId}
-                    prefillData={location.state?.prefillData}
+                    prefillData={activeLoan ? {
+                        entityName: activeLoan.borrower_name,
+                        rcNumber: activeLoan.rc_number || '', // Map RC Number
+                        chargeAmount: activeLoan.amount,
+                        chargeCurrency: activeLoan.currency,
+                        // inferred fields
+                        filingType: 'Fixed and Floating Charge'
+                    } : location.state?.prefillData}
                 />
                 <FilingDetailView
                     filingId={selectedFilingId}
@@ -261,10 +350,13 @@ const ChargeRegistry: React.FC = () => {
                     {!isBotActive ? (
                         <button
                             onClick={() => setIsFilingFormOpen(true)}
-                            className="flex items-center gap-2 px-8 py-3 bg-[#008751] text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] hover:bg-emerald-700 shadow-xl shadow-emerald-900/20 transition-all active:scale-95"
+                            className={`flex items-center gap-2 px-8 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 ${activeLoan
+                                ? 'bg-[#008751] text-white hover:bg-emerald-700 shadow-emerald-900/20'
+                                : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-900/20'
+                                }`}
                         >
-                            <Activity size={18} className="animate-pulse" />
-                            Create New Filing
+                            <Activity size={18} className={isBotActive ? "animate-spin" : ""} />
+                            {activeLoan ? 'Create Charge' : 'Create New Filing'}
                         </button>
                     ) : (
                         <button className="flex items-center gap-2 px-8 py-3 bg-slate-200 text-slate-500 rounded-xl text-xs font-black uppercase tracking-[0.2em] cursor-not-allowed">
@@ -277,10 +369,15 @@ const ChargeRegistry: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <LogTerminal logs={logs} isBotActive={isBotActive} progress={progress} />
-                <PayloadSidebar />
+                <PayloadSidebar activeLoan={activeLoan} activeFiling={activeFilingPayload} evidenceUrl={activeEvidenceUrl} />
             </div>
 
-            <FilingHistory filings={filteredFilings} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+            <FilingHistory
+                filings={filteredFilings}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                onSelectFiling={handleFilingSelection}
+            />
         </div>
     );
 };

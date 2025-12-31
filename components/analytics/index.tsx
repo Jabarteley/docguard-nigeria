@@ -114,9 +114,9 @@ const Analytics: React.FC = () => {
             const totalHours = hoursDocs + hoursFilings;
 
             setImpact({
-                riskMitigated: `₦${(totalLoanValue / 1000000).toFixed(1)}M`,
+                riskMitigated: `₦${(totalLoanValue ? (totalLoanValue / 1000000).toFixed(1) : '0.0')}M`,
                 costReduction: filings?.length ? '85%' : '0%', // Efficiency metric
-                hoursSaved: totalHours.toString(),
+                hoursSaved: (totalHours > 0 ? totalHours : 0).toString(),
                 penalties: '0.00'
             });
 

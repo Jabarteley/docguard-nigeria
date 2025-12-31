@@ -9,6 +9,7 @@ import {
 import IdentityVerification from './IdentityVerification';
 import DocumentScanner from './DocumentScanner';
 import LivenessCheck from './LivenessCheck';
+import CorporateVerification from './CorporateVerification';
 import RiskScore from './RiskScore';
 import LoanSelector from '../common/LoanSelector';
 import { useToast } from '../common/Toast';
@@ -26,16 +27,17 @@ const KYCOrchestrator: React.FC = () => {
         if (!completedSteps.includes(step)) {
             setCompletedSteps([...completedSteps, step]);
         }
-        if (step < 4) {
+        if (step < 5) {
             setStep(step + 1);
         }
     };
 
     const steps = [
         { id: 1, label: 'Identity Check', component: IdentityVerification },
-        { id: 2, label: 'Document Scan', component: DocumentScanner },
-        { id: 3, label: 'Liveness Proof', component: LivenessCheck },
-        { id: 4, label: 'Risk Assessment', component: RiskScore }
+        { id: 2, label: 'Corporate DD', component: CorporateVerification },
+        { id: 3, label: 'Document Scan', component: DocumentScanner },
+        { id: 4, label: 'Liveness Proof', component: LivenessCheck },
+        { id: 5, label: 'Risk Assessment', component: RiskScore }
     ];
 
     return (
@@ -94,9 +96,10 @@ const KYCOrchestrator: React.FC = () => {
             {/* Active Step */}
             <div className="min-h-[400px]">
                 {step === 1 && <IdentityVerification onComplete={handleStepComplete} />}
-                {step === 2 && <DocumentScanner onComplete={handleStepComplete} />}
-                {step === 3 && <LivenessCheck onComplete={handleStepComplete} />}
-                {step === 4 && <RiskScore score={98} details={kycData} />}
+                {step === 2 && <CorporateVerification onComplete={handleStepComplete} />}
+                {step === 3 && <DocumentScanner onComplete={handleStepComplete} />}
+                {step === 4 && <LivenessCheck onComplete={handleStepComplete} />}
+                {step === 5 && <RiskScore score={98} details={kycData} />}
             </div>
 
             {/* Dev Navigation (Optional) */}
