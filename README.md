@@ -111,23 +111,69 @@ The application includes sophisticated mock services to demonstrate the "Happy P
     VITE_SUPABASE_ANON_KEY=your_key
     ```
 
-## 🏃‍♂️ Running the App
+## 📦 Installation & Setup
 
-### Development Mode
+**Prerequisites**:
+*   Node.js v18+ (v20 Recommended)
+*   **Bun** (Highly recommended for speed) or npm
+*   Git
+
+### 1. Clone the Repository
 ```bash
-# Run web version
-npm run dev
-
-# Run Electron desktop version
-npm run electron:dev
+git clone https://github.com/Doc-Guard/docguard-nigeria.git
+cd docguard-nigeria
 ```
 
-### Build for Production
-To generate the Linux AppImage and Windows Portable Executable:
+### 2. Install Dependencies
+We use **Bun** for lightning-fast installs, but npm works too.
 ```bash
-npm run build && npm run build:electron && npx electron-builder --linux --win
+# Using Bun (Recommended)
+bun install
+
+# Using npm
+npm install
 ```
-_Note: Windows installer generation requires Wine on Linux._
+
+### 3. Smart Configuration
+The app uses a secure secret generation script. You don't need to manually create a `.env` file for local testing unless you want to override defaults.
+*   **Defaults**: The app will auto-generate encryption keys on startup.
+*   **Optional**: Copy `.env.example` to `.env` to supply your own Google Gemini API Key.
+    ```bash
+    cp .env.example .env
+    ```
+
+## 🏃‍♂️ How to Run
+
+### Mode A: Desktop Application (Recommended)
+Experience the full power of DocGuard with Native File System access and Screenshot Hub.
+```bash
+# Development Mode
+bun run electron:dev
+
+# Production Build (Preview)
+bun run build:electron && electron-builder --dir
+```
+
+### Mode B: Web Platform
+Useful for quick UI testing without Electron dependencies.
+```bash
+bun run dev
+```
+
+## 🏗️ Building for Release
+To generate the distributable binaries (AppImage, Snap, Setup.exe):
+
+```bash
+# Build for your current OS (Linux)
+bun run electron:build
+
+# The output will be in the `release/` directory:
+# - release/DocGuard-0.5.0.AppImage
+```
+
+## 🔧 Troubleshooting
+*   **`esbuild` error**: If you encounter architecture errors, run `node node_modules/esbuild/install.js`.
+*   **Blank Screen**: Ensure you are running `bun run electron:dev` and not just opening the HTML file.
 
 ## 🔐 Security
 *   **Credential Obfuscation**: API keys are XOR-encrypted in production builds.
