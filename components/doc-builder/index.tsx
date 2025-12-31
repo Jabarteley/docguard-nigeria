@@ -20,29 +20,34 @@ import AnalysisPanel from './AnalysisPanel';
 import Editor from './Editor';
 import ExecutionModal from './ExecutionModal';
 import LoanSelector from '../common/LoanSelector';
-
-// ... (CLAUSE_TEMPLATES unchanged)
-const CLAUSE_TEMPLATES: Record<string, string> = {
-    'Charge Perfection (CAMA 2020)': `The Borrower shall within 90 days from the date of creation of any charge or security interest created by this Agreement, deliver to the Agent evidence of registration of such charge with the Corporate Affairs Commission in accordance with Section 222 of the Companies and Allied Matters Act 2020.`,
-    'Movable Assets (STMA 2017)': `The Security Interest created under this Agreement in respect of movable assets shall be perfected by the registration of a financing statement at the National Collateral Registry in accordance with the Secured Transactions in Movable Assets Act 2017.`,
-    'Anti-Bribery (Nigeria)': `The Borrower shall comply with all applicable Nigerian anti-corruption laws, including the Corrupt Practices and Other Related Offences Act and the Economic and Financial Crimes Commission (Establishment) Act.`,
-    'BVN/TIN Verification': `The Borrower represents and warrants that the Bank Verification Numbers (BVN) of its directors and its Tax Identification Number (TIN) provided to the Lender are valid, active, and correctly registered with NIBSS and FIRS respectively.`,
-    'Sovereign Immunity Waiver': `The Borrower irrevocably and unconditionally waives, to the fullest extent permitted by Nigerian law, any right of immunity which it or any of its assets now has or may in the future have in any jurisdiction from any legal action, suit, or proceeding.`,
-    'Insurance of Secured Assets': `The Borrower shall, within 7 days of the execution of this Agreement, deliver to the Agent evidence of comprehensive insurance coverage for all Secured Assets. Such insurance must be issued by NAICOM-approved underwriters acceptable to the Agent (specifically Leadway Assurance, AIICO Insurance, or AXA Mansard) and shall name the Security Agent as first loss payee.`
-};
+import { LMA_TEMPLATES, LMATemplate, LMAClause, LMA_SECURED_TERM_FACILITY } from '../../lib/lmaTemplates';
 
 const DocBuilder: React.FC = () => {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const { showToast } = useToast();
     const location = useLocation();
-    const [activeTemplate, setActiveTemplate] = useState('LMA Nigeria 2024 - Secured Term Facility');
-    const [clauseText, setClauseText] = useState(CLAUSE_TEMPLATES['Charge Perfection (CAMA 2020)']);
+    const navigate = useNavigate();
+
+    // Template State
+    const [activeTemplate, setActiveTemplate] = useState<LMATemplate>(LMA_SECURED_TERM_FACILITY);
+    const [selectedClause, setSelectedClause] = useState<LMAClause | null>(null);
+    const [clauseText, setClauseText] = useState('');
+
+    // Document State
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<string | null>(null);
     const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
     const [isLoanSelectorOpen, setIsLoanSelectorOpen] = useState(false);
     const [docId, setDocId] = useState<string | null>(null);
-    const navigate = useNavigate();
+
+    // Initialize with first clause
+    useEffect(() => {
+        if (activeTemplate.sections.length > 0 && activeTemplate.sections[0].clauses.length > 0) {
+            const firstClause = activeTemplate.sections[0].clauses[0];
+            setSelectedClause(firstClause);
+            setClauseText(firstClause.content);
+        }
+    }, [activeTemplate]);
 
     // Load existing draft or handle new loan context
     useEffect(() => {
@@ -51,24 +56,45 @@ const DocBuilder: React.FC = () => {
         // If navigated from Origination Wizard
         if (location.state?.loanId) {
             setDocId(null); // New doc for this loan
-            // Ideally we'd fetch loan details here if needed, but we passed borrower name
             if (location.state?.borrower) {
                 setClauseText(prev => prev.replace('The Borrower', location.state.borrower));
             }
+        } else if (location.state?.docId) {
+            const fetchSpecificDraft = async () => {
+                const { data } = await supabase.from('documents').select('*').eq('id', location.state.docId).single();
+                if (data) {
+                    setDocId(data.id);
+                    setClauseText(data.content || '');
+                    // Load template by ID
+                    const templateId = data.template_type || 'lma-secured-term';
+                    const loadedTemplate = LMA_TEMPLATES.find(t => t.id === templateId);
+                    if (loadedTemplate) {
+                        setActiveTemplate(loadedTemplate);
+                    }
+                    setLastSaved(new Date(data.updated_at).toLocaleTimeString());
+                }
+            };
+            fetchSpecificDraft();
         } else {
+            // Fallback to latest
             const fetchLatestDraft = async () => {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('documents')
                     .select('*')
                     .eq('user_id', user.id)
                     .order('updated_at', { ascending: false })
                     .limit(1)
-                    .single();
+                    .maybeSingle();
 
                 if (data) {
                     setDocId(data.id);
                     setClauseText(data.content || '');
-                    setActiveTemplate(data.template_type || activeTemplate);
+                    // Load template by ID
+                    const templateId = data.template_type || 'lma-secured-term';
+                    const loadedTemplate = LMA_TEMPLATES.find(t => t.id === templateId);
+                    if (loadedTemplate) {
+                        setActiveTemplate(loadedTemplate);
+                    }
                     setLastSaved(new Date(data.updated_at).toLocaleTimeString());
                 }
             };
@@ -79,18 +105,15 @@ const DocBuilder: React.FC = () => {
     const handleSaveToCloud = async () => {
         if (!user) return;
         setIsSaving(true);
-
         try {
             const payload = {
                 user_id: user.id,
-                loan_id: location.state?.loanId || null, // Link to loan if present
+                loan_id: location.state?.loanId || null,
                 content: clauseText,
-                template_type: activeTemplate,
+                template_type: activeTemplate.id, // Save only the ID
                 status: 'draft',
                 updated_at: new Date().toISOString()
             };
-
-            // Upsert: update if docId exists, insert otherwise
             const { data, error } = await supabase
                 .from('documents')
                 .upsert(docId ? { ...payload, id: docId } : payload)
@@ -98,30 +121,251 @@ const DocBuilder: React.FC = () => {
                 .single();
 
             if (error) throw error;
-
             if (data) setDocId(data.id);
             setLastSaved(new Date().toLocaleTimeString());
+            return data.id;
         } catch (err: any) {
             console.error("Cloud save failed:", err);
             showToast(`Save Failed: ${err.message}`, 'error');
+            return null;
         } finally {
             setIsSaving(false);
         }
     };
 
-    const selectClause = (name: string) => {
-        setClauseText(CLAUSE_TEMPLATES[name]);
+    // PDF Export Options Interface
+    interface ExportOptions {
+        isCeremonialExecution?: boolean;
+        createSignatureRecord?: boolean;
+    }
+
+    const handleExportPDF = async (options: ExportOptions = {}) => {
+        const { isCeremonialExecution = false, createSignatureRecord = false } = options;
+
+        if (!user) return;
+
+        // Dynamic import jspdf
+        const { jsPDF } = await import('jspdf');
+
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        const maxLineWidth = pageWidth - margin * 2;
+
+        // === HEADER WITH DOCGUARD BRANDING ===
+        // Green header bar
+        doc.setFillColor(0, 135, 81); // DocGuard green #008751
+        doc.rect(0, 0, pageWidth, 35, 'F');
+
+        // Load and embed logo
+        try {
+            // Fetch logo from public folder (Vite serves public assets at root)
+            const logoResponse = await fetch('/logo.png');
+            if (logoResponse.ok) {
+                const logoBlob = await logoResponse.blob();
+                const logoDataUrl = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(logoBlob);
+                });
+                // Add logo image (white background rounded square with leaf)
+                doc.addImage(logoDataUrl, 'PNG', margin, 5, 25, 25);
+            }
+        } catch (e) {
+            console.warn('Could not load logo:', e);
+        }
+
+        // Logo text (positioned after logo)
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('DOCGUARD', margin + 30, 16);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Nigeria Secured Lending Platform', margin + 30, 24);
+
+        // Document reference number
+        doc.setFontSize(8);
+        doc.setTextColor(200, 255, 220);
+        doc.text(`REF: ${Date.now().toString(36).toUpperCase()}`, pageWidth - margin, 10, { align: 'right' });
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - margin, 16, { align: 'right' });
+
+        // === DOCUMENT TITLE ===
+        doc.setTextColor(10, 46, 31); // Dark green
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(activeTemplate.name.toUpperCase(), margin, 50);
+
+        // Subtitle
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text('Loan Market Association (LMA) Standard Template - Nigerian Adaptation', margin, 58);
+
+        // Horizontal divider
+        doc.setDrawColor(0, 135, 81);
+        doc.setLineWidth(0.5);
+        doc.line(margin, 65, pageWidth - margin, 65);
+
+        // === PARTIES SECTION ===
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 135, 81);
+        doc.text('PARTIES TO THIS AGREEMENT', margin, 75);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        doc.text('The Lender (as defined herein)', margin, 83);
+        doc.text('The Borrower (as defined herein)', margin, 90);
+        doc.text('The Security Agent (if applicable)', margin, 97);
+
+        // === MAIN CONTENT ===
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 135, 81);
+        doc.text('TERMS AND CONDITIONS', margin, 110);
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 30, 30);
+
+        const splitText = doc.splitTextToSize(clauseText, maxLineWidth);
+        doc.text(splitText, margin, 120);
+
+        // === SIGNATURE SECTION ===
+        let yPos = 120 + (splitText.length * 5) + 15;
+        if (yPos > pageHeight - 80) {
+            doc.addPage();
+            yPos = 30;
+        }
+
+        doc.setDrawColor(0, 135, 81);
+        doc.setFillColor(245, 250, 248);
+        doc.roundedRect(margin, yPos, pageWidth - margin * 2, 55, 3, 3, 'FD');
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 135, 81);
+        doc.text('EXECUTION & ATTESTATION', margin + 5, yPos + 10);
+
+        doc.setFontSize(10);
+        doc.text('IN WITNESS WHEREOF, the parties have executed this Agreement.', margin + 5, yPos + 18);
+
+        if (profile?.signature_url) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('SIGNED by:', margin + 5, yPos + 28);
+            doc.setFont('helvetica', 'normal');
+            doc.text(profile.full_name || 'Authorized Signatory', margin + 35, yPos + 28);
+
+            try {
+                doc.addImage(profile.signature_url, 'PNG', margin + 5, yPos + 32, 40, 18);
+            } catch (e) {
+                doc.text('[Digital Signature Applied]', margin + 5, yPos + 38);
+            }
+
+            doc.setFontSize(7);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Digitally Signed: ${new Date().toISOString()}`, margin + 50, yPos + 40);
+            doc.text(`Signer ID: ${user?.id?.slice(0, 8)}...`, margin + 50, yPos + 45);
+        } else {
+            doc.setTextColor(200, 100, 100);
+            doc.text('[No Digital Signature Found - Configure in Settings]', margin + 5, yPos + 35);
+        }
+
+        // === FOOTER ===
+        const footerY = pageHeight - 15;
+        doc.setFillColor(245, 245, 245);
+        doc.rect(0, footerY - 5, pageWidth, 20, 'F');
+
+        doc.setFontSize(7);
+        doc.setTextColor(100, 100, 100);
+        doc.text('This document was generated by DocGuard Nigeria | Evidence Act 2023 Compliant | www.docguard.ng', pageWidth / 2, footerY, { align: 'center' });
+        doc.text(`Page 1 of 1`, pageWidth - margin, footerY, { align: 'right' });
+
+        // Generate filename
+        const pdfFilename = `${activeTemplate.name.replace(/\s+/g, '_')}.pdf`;
+
+        // === SINGLE BLOB GENERATION (P0 Fix) ===
+        const pdfBlob = doc.output('blob');
+
+        // Download using blob URL
+        const downloadUrl = URL.createObjectURL(pdfBlob);
+        const downloadLink = document.createElement('a');
+        downloadLink.href = downloadUrl;
+        downloadLink.download = pdfFilename;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
+
+        // Cloud Upload (uses same blob - no double generation)
+        try {
+            const fileName = `${user.id}/${Date.now()}_${activeTemplate.name.replace(/\s+/g, '_')}.pdf`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('documents')
+                .upload(fileName, pdfBlob, {
+                    contentType: 'application/pdf'
+                });
+
+            if (uploadError) throw uploadError;
+
+            // === STATUS TRANSITIONS (P0 Fix) ===
+            const newStatus = isCeremonialExecution ? 'executed' : 'exported';
+
+            if (docId) {
+                await supabase
+                    .from('documents')
+                    .update({
+                        file_url: fileName,
+                        status: newStatus,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', docId);
+            }
+
+            // === CONDITIONAL SIGNATURE RECORDS (P0 Fix) ===
+            if (createSignatureRecord && isCeremonialExecution) {
+                await supabase.from('signatures').insert({
+                    user_id: user.id,
+                    document_id: docId,
+                    signature_url: profile?.signature_url || 'MANUAL_EXPORT',
+                    ip_address: 'CLIENT_IP_MASKED'
+                });
+            }
+
+            showToast(isCeremonialExecution
+                ? 'Document executed and securely archived'
+                : 'PDF exported successfully',
+                'success');
+        } catch (uploadErr: any) {
+            console.error('Cloud upload failed', uploadErr);
+            showToast('Cloud Archive Failed: ' + uploadErr.message, 'error');
+        }
     };
+
+    // Quick export handler (no signature record)
+    const handleQuickExport = () => handleExportPDF({ isCeremonialExecution: false, createSignatureRecord: false });
+
+    // Ceremonial execution handler (with signature record)
+    const handleCeremonialExecution = () => handleExportPDF({ isCeremonialExecution: true, createSignatureRecord: true });
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <ExecutionModal isOpen={isSigningModalOpen} onClose={() => setIsSigningModalOpen(false)} />
+            <ExecutionModal
+                isOpen={isSigningModalOpen}
+                onClose={() => setIsSigningModalOpen(false)}
+                onExecute={handleCeremonialExecution}
+                documentTitle={activeTemplate.name}
+                signerName={profile?.full_name || user?.user_metadata?.full_name || 'Authorized Signatory'}
+            />
             <LoanSelector
                 isOpen={isLoanSelectorOpen}
                 onClose={() => setIsLoanSelectorOpen(false)}
                 onSelect={(loan) => {
-                    // Update context to this loan
-                    setDocId(null); // clear current doc ID to creating new one for this loan
+                    setDocId(null);
                     setClauseText(prev => prev.replace('The Borrower', loan.borrower_name));
                     showToast(`Switched context to loan: ${loan.borrower_name}`, 'success');
                 }}
@@ -162,10 +406,12 @@ const DocBuilder: React.FC = () => {
                     <button
                         onClick={async () => {
                             if (window.electron) {
-                                const result = await window.electron.saveFile(clauseText, `${activeTemplate.replace(/\s+/g, '_')}.txt`);
+                                const result = await window.electron.saveFile(clauseText, `${activeTemplate.name.replace(/\s+/g, '_')}.txt`);
                                 if (result.success) showToast(`File saved: ${result.filePath}`, 'success');
                             } else {
-                                showToast("Local file saving is available in Desktop mode.", 'info');
+                                // Web Mode Fallback (or remove if only Electron supported)
+                                handleSaveToCloud();
+                                showToast("Saved to Cloud (Web Mode)", 'info');
                             }
                         }}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#008751] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-800 shadow-lg shadow-emerald-900/20 transition-all active:scale-95"
@@ -177,16 +423,18 @@ const DocBuilder: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                {/* Left: Library & Variables */}
                 <div className="space-y-6">
                     <VariablePanel content={clauseText} onUpdate={setClauseText} />
 
                     <ClauseLibrary
                         activeTemplate={activeTemplate}
-                        setActiveTemplate={setActiveTemplate}
-                        clauseText={clauseText}
-                        onSelectClause={selectClause}
-                        templates={CLAUSE_TEMPLATES}
+                        onSelectTemplate={(t) => setActiveTemplate(t)}
+                        templates={LMA_TEMPLATES}
+                        onSelectClause={(clause) => {
+                            setSelectedClause(clause);
+                            setClauseText(clause.content);
+                        }}
+                        selectedClauseId={selectedClause?.id}
                     />
                 </div>
 
@@ -209,40 +457,34 @@ const DocBuilder: React.FC = () => {
                             <p className="text-emerald-400 text-xs font-medium mb-8 leading-relaxed">Evidence Act 2023 certified e-signature integration for secure closing.</p>
                             <div className="flex flex-col gap-3">
                                 <button
-                                    onClick={async () => {
-                                        if (window.electron) { // Check if running in Electron
-                                            try {
-                                                const result = await window.electron.exportPDF();
-                                                if (result.success) showToast(`PDF Saved to: ${result.filePath}`, 'success');
-                                                else if (result.error) showToast(`Error: ${result.error}`, 'error');
-                                            } catch (e) {
-                                                console.error(e);
-                                            }
-                                        } else {
-                                            showToast("PDF Export is available in Desktop App mode only.", 'info');
-                                        }
-                                    }}
+                                    onClick={handleQuickExport}
                                     className="w-full py-4 bg-white text-emerald-950 rounded-xl text-xs font-black uppercase tracking-[0.2em] hover:bg-emerald-50 transition-all shadow-lg active:scale-95"
                                 >
                                     Secure PDF Export
                                 </button>
                                 <button
-                                    onClick={() => setIsSigningModalOpen(true)}
+                                    onClick={() => {
+                                        if (!profile?.signature_url) {
+                                            showToast("Please configure your Digital Signature in Settings first.", "error");
+                                            navigate('/settings');
+                                        } else {
+                                            setIsSigningModalOpen(true);
+                                        }
+                                    }}
                                     className="w-full py-4 bg-[#008751] text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     <PenTool size={16} />
-                                    Execute via DocuSign
+                                    Execute & Sign
                                 </button>
                                 <button
                                     onClick={async () => {
                                         // Navigate to Registry with document context
-                                        if (!docId) {
-                                            showToast('Please save document first', 'warning');
-                                            return;
-                                        }
+                                        const safeDocId = docId || (await handleSaveToCloud());
+                                        if (!safeDocId) return;
+
                                         navigate('/registry', {
                                             state: {
-                                                documentId: docId,
+                                                documentId: safeDocId,
                                                 openFilingForm: true,
                                                 prefillData: {
                                                     entityName: clauseText.match(/The Borrower[,:]\s*([^,\.]+)/)?.[1]?.trim() || '',

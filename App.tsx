@@ -53,7 +53,7 @@ const AppContent: React.FC = () => {
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email || 'User';
 
   return (
-    <MainLayout userEmail={displayName} onLogout={signOut}>
+    <MainLayout userEmail={displayName} userProfilePic={profile?.avatar_url} onLogout={signOut}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/doc-builder" element={<DocBuilder />} />

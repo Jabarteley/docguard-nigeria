@@ -10,6 +10,7 @@ import LogTerminal from './LogTerminal';
 import PayloadSidebar from './PayloadSidebar';
 import FilingHistory from './FilingHistory';
 import LoanSelector from '../common/LoanSelector';
+import FilingDetailView from './FilingDetailView';
 import FilingForm, { FilingFormData } from './FilingForm';
 
 interface Filing {
@@ -33,6 +34,8 @@ const ChargeRegistry: React.FC = () => {
     const [filings, setFilings] = useState<Filing[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeLoanId, setActiveLoanId] = useState<string | null>(null);
+    const [selectedFilingId, setSelectedFilingId] = useState<string | null>(null);
+    const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
 
     // Fetch filings from Supabase
     useEffect(() => {
@@ -109,10 +112,16 @@ const ChargeRegistry: React.FC = () => {
         }
     }, []);
 
-    // Handle navigation from DocBuilder
+    // Handle navigation state
     useEffect(() => {
         if (location.state?.openFilingForm) {
             setIsFilingFormOpen(true);
+        } else if (location.state?.filingId) {
+            // Open detail view for the specific filing
+            setSelectedFilingId(location.state.filingId);
+            setIsDetailViewOpen(true);
+            // Clear state to prevent re-opening on subsequent renders
+            window.history.replaceState({}, document.title);
         }
     }, [location.state]);
 
@@ -165,35 +174,35 @@ const ChargeRegistry: React.FC = () => {
                     filingId: filing.id
                 });
             } else {
-                // Web Fallback Mode with database updates
-                const steps = [
-                    { msg: `Initializing filing for ${filingData.entityName}...`, type: 'info', p: 5, status: 'Pending' },
-                    { msg: `Connecting to CAC Portal (RC: ${filingData.rcNumber})...`, type: 'info', p: 20, status: 'Pending' },
-                    { msg: "Authenticating with CAC credentials...", type: 'success', p: 30, status: 'Submitted' },
-                    { msg: `Uploading charge particulars (${filingData.chargeCurrency} ${filingData.chargeAmount.toLocaleString()})...`, type: 'info', p: 50, status: 'Submitted' },
-                    { msg: "Processing asset registration...", type: 'info', p: 70, status: 'Submitted' },
-                    { msg: `PERFECTION SUCCESS - Ref: ${refId}`, type: 'success', p: 100, status: 'Perfected' },
-                ];
+                // Web Mode: Simulate real backend processing delay but use DB updates
+                // Ideally this triggers a backend Edge Function, but for this frontend demo
+                // we will simulate the "network calls" but strictly update the DB at each step.
 
-                for (const step of steps) {
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                    addLog(step.msg, step.type as any);
-                    setProgress(step.p);
+                addLog(`Initializing filing for ${filingData.entityName}...`, 'info');
+                setProgress(10);
 
-                    // Update database at milestones
-                    if (step.p === 30 || step.p === 70 || step.p === 100) {
-                        await supabase
-                            .from('filings')
-                            .update({
-                                status: step.status,
-                                updated_at: new Date().toISOString()
-                            })
-                            .eq('id', filing.id);
-                    }
-                }
+                // 1. Submitted
+                await new Promise(r => setTimeout(r, 2000)); // Network simulation
+                await supabase.from('filings').update({ status: 'Submitted' }).eq('id', filing.id);
+                addLog("Status updated to SUBMITTED.", 'info');
+                setProgress(40);
+
+                // 2. Processing
+                await new Promise(r => setTimeout(r, 2000));
+                addLog("CAC Portal: verifying charge particulars...", 'info');
+                setProgress(70);
+
+                // 3. Perfected
+                await new Promise(r => setTimeout(r, 2000));
+                await supabase.from('filings').update({ status: 'Perfected' }).eq('id', filing.id);
+                addLog(`PERFECTION CONFIRMED. Ref: ${refId}`, 'success');
+                setProgress(100);
 
                 setIsBotActive(false);
-                showToast(`Filing completed successfully! Reference: ${refId}`, 'success');
+                showToast(`Filing perfected successfully! Reference: ${refId}`, 'success');
+
+                // Refresh list
+                // fetchFilings() handled by useEffect dep or subscription
             }
         } catch (error: any) {
             console.error('Filing failed:', error);
@@ -222,6 +231,14 @@ const ChargeRegistry: React.FC = () => {
                     linkedLoanId={activeLoanId}
                     linkedDocumentId={location.state?.documentId}
                     prefillData={location.state?.prefillData}
+                />
+                <FilingDetailView
+                    filingId={selectedFilingId}
+                    isOpen={isDetailViewOpen}
+                    onClose={() => {
+                        setIsDetailViewOpen(false);
+                        setSelectedFilingId(null);
+                    }}
                 />
                 <div>
                     <div className="flex items-center gap-3 mb-1">

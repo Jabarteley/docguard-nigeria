@@ -7,6 +7,7 @@ interface Profile {
     id: string;
     full_name: string | null;
     avatar_url: string | null;
+    signature_url?: string | null;
     organization: string | null;
     role_title: string | null;
     preferences: any | null;
