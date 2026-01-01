@@ -31,7 +31,7 @@ In Nigeria's ₦15 trillion corporate lending market, **administrative friction 
 *   **Context-Aware**: Linking a loan to any module instantly pre-fills forms, eliminating manual entry errors.
 
 ### 2. 📝 LMA Smart Document Builder
-*   **AI Clause Analysis**: Gemini 2.0 Flash analyzes clauses for risk against Nigerian Evidence Act 2023.
+*   **AI Clause Analysis**: Uses the new Gemini 3 Flash model for analyzing clauses for risk against Nigerian Evidence Act 2023.
 *   **Magic Rewrite**: One-click adaptation of UK-style covenants to Nigerian customized clauses.
 *   **Legal Precision**: Automatically injects full corporate descriptors (e.g., *"Dangote Industries (with Registration No. RC123456)"*) into definitions.
 
@@ -86,7 +86,7 @@ The application includes sophisticated mock services to demonstrate the "Happy P
 ### Backend & AI (The Brain)
 *   **Database**: Supabase (PostgreSQL 15) with Row Level Security (RLS).
 *   **Storage**: Supabase Storage (Evidence Buckets).
-*   **AI**: Google Gemini 2.0 Flash (`@google/genai` SDK) for clause analysis and risk scoring.
+*   **AI**: Google Gemini 3 Flash (`@google/genai` SDK) for clause analysis and risk scoring.
 
 
 ## 📦 Installation & Setup
